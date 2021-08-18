@@ -2,7 +2,7 @@ import cloneDeep from 'lodash.clonedeep';
 import isEqual from 'lodash.isequal';
 import merge from 'lodash.merge';
 import { LeafBlot, Scope } from 'parchment';
-import Delta, { AttributeMap } from 'quill-delta';
+import Delta, { AttributeMap, Op } from 'quill-delta';
 import Block, { BlockEmbed, bubbleFormats } from '../blots/block';
 import Break from '../blots/break';
 import CursorBlot from '../blots/cursor';
@@ -24,7 +24,7 @@ class Editor {
     this.scroll.batchStart();
     const normalizedDelta = normalizeDelta(delta);
     normalizedDelta.reduce((index, op) => {
-      const length = op.retain || op.delete || op.insert.length || 1;
+      const length = Op.length(op);
       let attributes = op.attributes || {};
       if (op.insert != null) {
         if (typeof op.insert === 'string') {
@@ -60,6 +60,10 @@ class Editor {
           this.scroll.insertAt(index, key, op.insert[key]);
         }
         scrollLength += length;
+      } else if (op.retain !== null && typeof op.retain === 'object') {
+        const key = Object.keys(op.retain)[0];
+        if (key == null) return index;
+        this.scroll.updateEmbedAt(index, key, op.retain[key]);
       }
       Object.keys(attributes).forEach(name => {
         this.scroll.formatAt(index, length, name, attributes[name]);
